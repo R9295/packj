@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 from enum import Enum
 import os
+import json
 import inspect
 import logging
 import yaml
@@ -341,6 +342,51 @@ def analyze_install_hooks(pm_name, pm_proxy, pkg_name, pkg_info, risks, report):
             pass
         if is_ok:
             msg_ok('no hooks found')
+    except Exception as e:
+        msg_fail(str(e))
+    finally:
+        return risks, report
+
+
+def _get_api_results(filepath):
+    with open(filepath + '.out') as f:
+        data = json.loads(f.read())
+        return data['pkgs'][0].get('apiResults', [])
+
+def _get_api_declrs(filepath):
+    with open(filepath + '.out.json') as f:
+        return json.loads(f.read())
+
+def analyze_empty_catchblock(
+    pm_name, pm_proxy, pkg_name, pkg_info, filepath, risks, report
+):
+    msg_info('Checking for empty catch blocks', end='', flush=True)
+    # TODO: add to report
+    results = {
+        'count': 0
+    }
+    try:
+        language = get_language(pm_name)
+        if language == LanguageEnum.python:
+            # for all sensitive API calls, check if they are in a try block
+            # check if the catch clause is empty
+            api_results = _get_api_results(filepath)
+            if len(api_results) > 0:
+                catch_clauses = _get_api_declrs(filepath)['EmptyCatchClause']
+                if len(catch_clauses) > 0:
+                    for clause in catch_clauses:
+                        for func in api_results:
+                            clause_filename = '/'.join(clause['File'].split('/')[3:])
+                            func_filename = func['range']['start']['fileInfo']['file']
+                            if clause_filename == func_filename:
+                                if clause['StartLine'] < func['range']['start']['row'] < clause['EndLine']:
+                                    results['count'] += 1
+        if results['count'] > 0:
+            msg_alert(f'found {results["count"]} empty catch caluse(s) with sensitive API call(s)')
+        elif language == LanguageEnum.javascript:
+            pass
+        elif language == LanguageEnum.ruby:
+            pass
     except Exception as e:
         msg_fail(str(e))
     finally:
@@ -1053,6 +1099,9 @@ def audit(pm_args, pkg_name, ver_str, report_dir, extra_args, config):
         )
         risks, report = analyze_composition(
             pm_name, pkg_name, ver_str, filepath, risks, report
+        )
+        risks, report = analyze_empty_catchblock(
+            pm_name, pm_proxy, pkg_name, pkg_info, filepath, risks, report
         )
 
     # perform dynamic analysis if requested
