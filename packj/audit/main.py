@@ -367,7 +367,7 @@ def analyze_empty_catchblock(
     }
     try:
         language = get_language(pm_name)
-        if language == LanguageEnum.python:
+        if language == LanguageEnum.python or language == LanguageEnum.javascript:
             # for all sensitive API calls, check if they are in a try block
             # check if the catch clause is empty
             api_results = _get_api_results(filepath)
@@ -381,12 +381,12 @@ def analyze_empty_catchblock(
                             if clause_filename == func_filename:
                                 if clause['StartLine'] < func['range']['start']['row'] < clause['EndLine']:
                                     results['count'] += 1
-        if results['count'] > 0:
-            msg_alert(f'found {results["count"]} empty catch caluse(s) with sensitive API call(s)')
-        elif language == LanguageEnum.javascript:
-            pass
         elif language == LanguageEnum.ruby:
             pass
+        if results['count'] > 0:
+            msg_alert(f'found {results["count"]} empty catch caluse(s) with sensitive API call(s)')
+        else:
+            msg_ok('no empty catch blocks with sensitive calls found')
     except Exception as e:
         msg_fail(str(e))
     finally:
