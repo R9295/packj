@@ -376,10 +376,11 @@ def analyze_empty_catchblock(
                 if len(catch_clauses) > 0:
                     for clause in catch_clauses:
                         for func in api_results:
-                            clause_filename = '/'.join(clause['File'].split('/')[3:])
+                            func_directory = func['range']['start']['fileInfo']['directory']
                             func_filename = func['range']['start']['fileInfo']['file']
-                            if clause_filename == func_filename:
-                                if clause['StartLine'] < func['range']['start']['row'] < clause['EndLine']:
+                            clause_filename = clause['File']
+                            if clause_filename == func_directory + '/' + func_filename:
+                                if clause['StartLine'] <= func['range']['start']['row'] <= clause['EndLine']:
                                     results['count'] += 1
         elif language == LanguageEnum.ruby:
             pass

@@ -217,7 +217,16 @@ class JavaScriptDeclRefVisitor(esprima.NodeVisitor):
                 "Line": node.loc.start.line,
             }
             self.all_declrefs["Calls"].append(node_details)
-
+            if full_name.endswith('catch'):
+                # capture .catch call
+                if len(node.arguments[0].body.body) == 0:
+                    node_details = {
+                        "Name": "",
+                        "File": self.infile,
+                        "StartLine": node.loc.start.line,
+                        "EndLine": node.loc.end.line,
+                    }
+                    self.all_declrefs["EmptyCatchClause"].append(node_details)
             source_text = get_source_text(self.source, node.loc)
             source_range = (
                 (node.loc.start.line, node.loc.start.column),
